@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
+
+project(cornichon VERSION 1.0.0 LANGUAGES C CXX)
+
+include(GNUInstallDirs)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+add_subdirectory(lib)
+
+install(
+    DIRECTORY ${CMAKE_SOURCE_DIR}/include/cornichon
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    PATTERN "*"
+)
+
+install(
+    DIRECTORY ../etc/
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/cornichon
+    OPTIONAL
+    FILES_MATCHING PATTERN "*"
+)
