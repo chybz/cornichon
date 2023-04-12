@@ -1,4 +1,8 @@
-/build
-/ext
-/stage
-exodus-*.tgz
+# Visual Studio Code
+.vscode
+# weezdev
+.weezdev
+cmake/toolchains
+build/
+**/CMakeLists.txt
+Makefile
