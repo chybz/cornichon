@@ -4,7 +4,7 @@
 
 namespace cornichon::cucumber {
 
-class CORNICHON_API parser
+class parser
 {
 public:
     parser();

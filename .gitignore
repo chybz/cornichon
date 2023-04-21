@@ -2,7 +2,6 @@
 .vscode
 # weezdev
 .weezdev
-cmake/toolchains
 build/
 **/CMakeLists.txt
 Makefile
