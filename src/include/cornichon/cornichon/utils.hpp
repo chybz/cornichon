@@ -54,6 +54,12 @@ std::string fullpath(const std::string_view& dir, const std::string_view& file);
 std::string basename(const std::string_view& path, const std::string_view& ext = {});
 std::string dirname(const std::string_view& path);
 
+std::string
+quote_meta(const std::string_view& unquoted);
+
+strings
+find_files(const std::string_view& path, const std::string_view& re);
+
 std::size_t human_readable_size(const std::string& expr);
 
 std::string human_readable_size(
