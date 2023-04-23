@@ -14,6 +14,8 @@ struct line
 
     bool is_blank() const;
     bool is_comment() const;
+
+    std::string content() const;
 };
 
 using lines = std::vector<line>;

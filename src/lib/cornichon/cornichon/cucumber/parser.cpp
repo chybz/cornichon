@@ -1,6 +1,7 @@
 #include <cornichon/cucumber/parser.hpp>
 
 #include <cornichon/utils.hpp>
+#include <cornichon/log.hpp>
 
 namespace cornichon::cucumber {
 
@@ -71,8 +72,10 @@ parser::extract_feature_name(
 ) const
 {
     auto lines = from;
+    auto it = lines.begin();
+    strings feature_tags;
 
-    for (auto it = lines.begin(); it != lines.end(); ) {
+    for (; it != lines.end(); ++it) {
         const auto& line = *it;
 
         if (line.is_comment()) {
@@ -83,30 +86,146 @@ parser::extract_feature_name(
             break;
         }
 
+        m = is_feature_line(line.content());
 
+        if (m) {
+            f.name = m[1];
+            f.keyword_original = m[0];
+            f.name_line = line;
+            f.tags = feature_tags;
+
+            break;
+        } else if (m = extract_matches(line.content(), "@([^\\s]+)")) {
+            feature_tags.insert(
+                feature_tags.end(),
+                std::make_move_iterator(m.matches.begin()),
+                std::make_move_iterator(m.matches.end())
+            );
+        } else {
+            // TODO: improve this later
+            die(
+                "malformed feature line (expecting: /^(feature): (.+)/",
+                line.raw_content
+            );
+        }
     }
+
+    lines.erase(lines.begin(), it);
+
+    return remove_next_blanks(lines);
 }
 
-void
+model::lines
 parser::extract_conditions_of_satisfaction(
     model::feature& f,
-    model::lines& lines
+    const model::lines& from
 ) const
-{}
+{
+    auto lines = from;
+    auto it = lines.begin();
+
+    for (; it != lines.end(); ++it) {
+        const auto& line = *it;
+
+        if (line.is_comment() || line.is_blank()) {
+            continue;
+        }
+
+        if (
+            is_scenario_line(line.content())
+            ||
+            is_tags_line(line.content())
+        ) {
+            --it;
+            break;
+        } else {
+            f.satisfactions.push_back(line);
+        }
+    }
+
+    lines.erase(lines.begin(), it);
+
+    return remove_next_blanks(lines);
+}
 
 void
 parser::finish_scenario(
     model::feature& f,
-    model::line& line
+    const model::line& line
 ) const
-{}
+{
+    if (!f.scenarios.empty()) {
+        const auto& last_scenario = f.scenarios.back();
 
-void
+        if (
+            last_scenario.keyword_original = "Scenario Outline"
+            &&
+            last_scenario.datasets.empty()
+        ) {
+            die(
+                "Outline scenario expects 'Examples:' section",
+                line.raw_content
+            );
+        }
+    }
+}
+
+model::lines lines
 parser::extract_scenarios(
     model::feature& f,
-    model::lines& lines
+    const model::lines& from
 ) const
-{}
+{
+    std::size_t scenarios = 0;
+    auto lines = from;
+    auto it = lines.begin();
+    strings tags;
+
+    for (; it != lines.end(); ++it) {
+        const auto& line = *it;
+
+        if (line.is_comment() || line.is_blank()) {
+            continue;
+        }
+
+        if (auto m = is_examples_line(line.content())) {
+            die_if(
+                f.scenarios.emtpy(),
+                "'Examples:' line before scenario definition"
+            );
+
+            auto& last_scenario = f.scenarios().back();
+            model::dataset ds{.name = m[1], .line = line};
+
+            if (!tags.empty()) {
+                ds.tags = last_scenario.tags;
+                std::insert(ds.tags.end(), tags.begin(), tags.end());
+            } else {
+                ds.tags = tags;
+            }
+
+            tags.clear();
+            lines = extract_examples_description(ds, lines);
+            lines = extract_table(6, ds, remove_next_blanks(lines));
+            it = lines.begin();
+
+            if (!last_scenario.datasets.empty()) {
+                const auto& prev_ds = last_scenario.datasets[0];
+                // TODO: check consistent data
+            }
+
+            last_scenario.datasets.emplace_back(std::move(ds));
+        } else if (auto m = is_scenario_line(line.content())) {
+            finish_scenario(f, line);
+
+            if (scenarios++ && )
+        }
+    }
+
+    lines.erase(lines.begin(), it);
+
+    return remove_next_blanks(lines);
+}
 
 void
 parser::extract_steps(

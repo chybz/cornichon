@@ -40,14 +40,15 @@ private:
         const model::lines& from
     ) const;
 
+    model::lines
     void extract_conditions_of_satisfaction(
         model::feature& f,
-        model::lines& lines
+        const model::lines& from
     ) const;
 
     void finish_scenario(
         model::feature& f,
-        model::line& line
+        const model::line& line
     ) const;
 
     void extract_scenarios(

@@ -897,15 +897,15 @@ extract_matches(const std::string& expr, const std::string& re)
 {
     match_result r;
     std::smatch m;
+    std::regex tre(re);
 
-    r.match = std::regex_match(expr, m, std::regex(re));
+    auto b = std::sregex_iterator(expr.begin(), expr.end(), tre);
+    auto e = std::sregex_iterator();
 
-    if (r) {
-        if (m.size() > 1) {
-            for (std::size_t i = 1; i < m.size(); ++i) {
-                r.matches.push_back(m[i].str());
-            }
-        }
+    r.match = (b != e);
+
+    for (auto i = b; i != e; ++i) {
+        r.matches.push_back(i->str());
     }
 
     return r;
