@@ -20,35 +20,35 @@ parser::parse(const model::file& file) const
     return model::feature{ .document{file, content} };
 }
 
-bool
+match_result
 parser::is_step_line(bool continuation, const std::string& line) const
 {
     return
-        matches(
+        extract_matches(
             line,
             continuation ? "step_line_cont" : "step_line_first"
         );
 }
 
-bool
+match_result
 parser::is_feature_line(const std::string& line) const
-{ return matches(line, "feature_line"); }
+{ return extract_matches(line, "feature_line"); }
 
-bool
+match_result
 parser::is_scenario_line(const std::string& line) const
-{ return matches(line, "scenario_line"); }
+{ return extract_matches(line, "scenario_line"); }
 
-bool
+match_result
 parser::is_table_line(const std::string& line) const
-{ return matches(line, "table_line"); }
+{ return extract_matches(line, "table_line"); }
 
-bool
+match_result
 parser::is_tags_line(const std::string& line) const
-{ return matches(line, "tags_line"); }
+{ return extract_matches(line, "tags_line"); }
 
-bool
+match_result
 parser::is_examples_line(const std::string& line) const
-{ return matches(line, "examples_line"); }
+{ return extract_matches(line, "examples_line"); }
 
 model::lines
 parser::remove_next_blanks(const model::lines& from) const
@@ -64,12 +64,28 @@ parser::remove_next_blanks(const model::lines& from) const
     return to;
 }
 
-void
+model::lines
 parser::extract_feature_name(
     model::feature& f,
-    model::lines& lines
+    const model::lines& from
 ) const
-{}
+{
+    auto lines = from;
+
+    for (auto it = lines.begin(); it != lines.end(); ) {
+        const auto& line = *it;
+
+        if (line.is_comment()) {
+            continue;
+        }
+
+        if (line.is_blank()) {
+            break;
+        }
+
+
+    }
+}
 
 void
 parser::extract_conditions_of_satisfaction(

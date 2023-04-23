@@ -11,6 +11,8 @@
 #include <cornichon/cucumber/model/scenario.hpp>
 #include <cornichon/cucumber/model/step.hpp>
 
+#include <cornichon/utils.hpp>
+
 namespace cornichon::cucumber {
 
 class parser
@@ -24,18 +26,18 @@ public:
 private:
     using matcher_map = std::unordered_map<std::string, std::regex>;
 
-    bool is_step_line(bool continuation, const std::string& line) const;
-    bool is_feature_line(const std::string& line) const;
-    bool is_scenario_line(const std::string& line) const;
-    bool is_table_line(const std::string& line) const;
-    bool is_tags_line(const std::string& line) const;
-    bool is_examples_line(const std::string& line) const;
+    match_result is_step_line(bool continuation, const std::string& line) const;
+    match_result is_feature_line(const std::string& line) const;
+    match_result is_scenario_line(const std::string& line) const;
+    match_result is_table_line(const std::string& line) const;
+    match_result is_tags_line(const std::string& line) const;
+    match_result is_examples_line(const std::string& line) const;
 
     model::lines remove_next_blanks(const model::lines& from) const;
 
-    void extract_feature_name(
+    model::lines extract_feature_name(
         model::feature& f,
-        model::lines& lines
+        const model::lines& from
     ) const;
 
     void extract_conditions_of_satisfaction(

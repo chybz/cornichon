@@ -16,6 +16,7 @@
 #include <functional>
 #include <utility>
 #include <filesystem>
+#include <tuple>
 
 #include <cornichon/types.hpp>
 #include <cornichon/join_utils.hpp>
@@ -108,6 +109,18 @@ subst(const std::string& s, const std::string& re, const std::string& what);
 void chomp(std::string& s);
 
 strings glob(const std::string& expr);
+
+struct match_result
+{
+    bool match = false;
+    strings matches;
+
+    operator bool() const
+    { return match; }
+};
+
+match_result
+extract_matches(const std::string& expr, const std::string& re);
 
 bool match(const std::string& expr, const std::string& re);
 bool imatch(const std::string& expr, const std::string& re);
