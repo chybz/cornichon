@@ -16,13 +16,11 @@ bool
 line::is_comment() const
 { return std::regex_match(raw_content, comment_re); }
 
-std::string
-line::content() const
+void
+line::strip()
 {
-    auto s = subst(raw_content, "^\\s+", "");
-    s = subst(s, "\\s+$", "");
-
-    return s;
+    content = subst(raw_content, "^\\s+", "");
+    content = subst(content, "\\s+$", "");
 }
 
 }

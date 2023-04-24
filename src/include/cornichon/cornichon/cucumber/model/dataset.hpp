@@ -15,7 +15,7 @@ using table = std::vector<table_row>;
 struct dataset
 {
     std::string name;
-    model::line description;
+    model::lines description;
     table data;
     model::line line;
     strings tags;

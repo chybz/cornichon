@@ -16,6 +16,7 @@ document::document(const model::file& f, const std::string& content)
             .raw_content{ lv.begin(), lv.end() }
         };
 
+        l.strip();
         lines.emplace_back(std::move(l));
     }
 }

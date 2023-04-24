@@ -110,18 +110,6 @@ void chomp(std::string& s);
 
 strings glob(const std::string& expr);
 
-struct match_result
-{
-    bool match = false;
-    strings matches;
-
-    operator bool() const
-    { return match; }
-};
-
-match_result
-extract_matches(const std::string& expr, const std::string& re);
-
 bool match(const std::string& expr, const std::string& re);
 bool imatch(const std::string& expr, const std::string& re);
 

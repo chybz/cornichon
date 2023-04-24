@@ -1,14 +1,76 @@
+#include <unordered_map>
+#include <regex>
+
 #include <cornichon/cucumber/parser.hpp>
 
 #include <cornichon/utils.hpp>
 #include <cornichon/log.hpp>
+#include <cornichon/regex.hpp>
 
 namespace cornichon::cucumber {
 
-parser::parser()
+using matcher_map = std::unordered_map<std::string_view, std::regex>;
+
+static const std::string_view step_line_first = "step_line_first";
+static const std::string_view step_line_cont = "step_line_cont";
+static const std::string_view feature_line = "feature_line";
+static const std::string_view scenario_line = "scenario_line";
+static const std::string_view examples_line = "examples_line";
+static const std::string_view table_line = "table_line";
+static const std::string_view tags_line = "tags_line";
+
+const std::regex&
+get_matcher(const std::string_view& k)
 {
-    make_matchers();
+    static const matcher_map mm = {
+        {
+            step_line_first,
+            std::regex{"^(given|and|when|then|but)(.+)"}
+        },
+        {
+            step_line_cont,
+            std::regex{"^(given|when|then)(.+)"}
+        },
+        {
+            feature_line,
+            std::regex{"^(feature): (.+)"}
+        },
+        {
+            scenario_line,
+            std::regex{"^(background|scenario|scenarioOutline): ?(.+)?"}
+        },
+        {
+            examples_line,
+            std::regex{"^(examples): ?(.+)?$"}
+        },
+        {
+            table_line,
+            std::regex{"^\\s*\\|"}
+        },
+        {
+            tags_line,
+            std::regex{"@(^\\s]+)"}
+        }
+    };
+
+    return mm.at(k);
 }
+
+template <typename... Args>
+bool
+matches(
+    const std::string& line,
+    const std::string_view& k,
+    Args&&... args
+)
+{ return full_match(line, get_matcher(k), std::forward<Args>(args)...); }
+
+bool
+is_step_line(bool continuation, const std::string& line)
+{ return matches(line, continuation ? step_line_cont : step_line_first); }
+
+parser::parser()
+{}
 
 parser::~parser()
 {}
@@ -20,36 +82,6 @@ parser::parse(const model::file& file) const
 
     return model::feature{ .document{file, content} };
 }
-
-match_result
-parser::is_step_line(bool continuation, const std::string& line) const
-{
-    return
-        extract_matches(
-            line,
-            continuation ? "step_line_cont" : "step_line_first"
-        );
-}
-
-match_result
-parser::is_feature_line(const std::string& line) const
-{ return extract_matches(line, "feature_line"); }
-
-match_result
-parser::is_scenario_line(const std::string& line) const
-{ return extract_matches(line, "scenario_line"); }
-
-match_result
-parser::is_table_line(const std::string& line) const
-{ return extract_matches(line, "table_line"); }
-
-match_result
-parser::is_tags_line(const std::string& line) const
-{ return extract_matches(line, "tags_line"); }
-
-match_result
-parser::is_examples_line(const std::string& line) const
-{ return extract_matches(line, "examples_line"); }
 
 model::lines
 parser::remove_next_blanks(const model::lines& from) const
@@ -74,9 +106,11 @@ parser::extract_feature_name(
     auto lines = from;
     auto it = lines.begin();
     strings feature_tags;
+    std::string_view kw;
+    std::string_view name;
 
-    for (; it != lines.end(); ++it) {
-        const auto& line = *it;
+    while (it != lines.end()) {
+        const auto& line = *it++;
 
         if (line.is_comment()) {
             continue;
@@ -86,21 +120,14 @@ parser::extract_feature_name(
             break;
         }
 
-        m = is_feature_line(line.content());
-
-        if (m) {
-            f.name = m[1];
-            f.keyword_original = m[0];
+        if (matches(line.content, feature_line, kw, name)) {
+            f.name = name;
+            f.keyword_original = kw;
             f.name_line = line;
             f.tags = feature_tags;
 
             break;
-        } else if (m = extract_matches(line.content(), "@([^\\s]+)")) {
-            feature_tags.insert(
-                feature_tags.end(),
-                std::make_move_iterator(m.matches.begin()),
-                std::make_move_iterator(m.matches.end())
-            );
+        } else if (partial_match(line.content, "@([^\\s]+)", feature_tags)) {
         } else {
             // TODO: improve this later
             die(
@@ -124,22 +151,22 @@ parser::extract_conditions_of_satisfaction(
     auto lines = from;
     auto it = lines.begin();
 
-    for (; it != lines.end(); ++it) {
-        const auto& line = *it;
+    while (it != lines.end()) {
+        const auto& line = *it++;
 
         if (line.is_comment() || line.is_blank()) {
             continue;
         }
 
         if (
-            is_scenario_line(line.content())
+            matches(line.content, scenario_line)
             ||
-            is_tags_line(line.content())
+            matches(line.content, tags_line)
         ) {
             --it;
             break;
         } else {
-            f.satisfactions.push_back(line);
+            f.satisfaction.push_back(line);
         }
     }
 
@@ -158,7 +185,7 @@ parser::finish_scenario(
         const auto& last_scenario = f.scenarios.back();
 
         if (
-            last_scenario.keyword_original = "Scenario Outline"
+            last_scenario.keyword_original == "Scenario Outline"
             &&
             last_scenario.datasets.empty()
         ) {
@@ -170,7 +197,7 @@ parser::finish_scenario(
     }
 }
 
-model::lines lines
+model::lines
 parser::extract_scenarios(
     model::feature& f,
     const model::lines& from
@@ -180,33 +207,39 @@ parser::extract_scenarios(
     auto lines = from;
     auto it = lines.begin();
     strings tags;
+    std::string_view type;
+    std::string_view name;
 
-    for (; it != lines.end(); ++it) {
-        const auto& line = *it;
+    while (it != lines.end()) {
+        const auto& line = *it++;
 
         if (line.is_comment() || line.is_blank()) {
             continue;
         }
 
-        if (auto m = is_examples_line(line.content())) {
+        if (matches(line.content, examples_line, type, name)) {
             die_if(
-                f.scenarios.emtpy(),
+                f.scenarios.empty(),
                 "'Examples:' line before scenario definition"
             );
 
-            auto& last_scenario = f.scenarios().back();
-            model::dataset ds{.name = m[1], .line = line};
+            auto& last_scenario = f.scenarios.back();
+
+            model::dataset ds{
+                .name{name.data(), name.size()},
+                .line = line
+            };
 
             if (!tags.empty()) {
                 ds.tags = last_scenario.tags;
-                std::insert(ds.tags.end(), tags.begin(), tags.end());
+                ds.tags.insert(ds.tags.end(), tags.begin(), tags.end());
             } else {
                 ds.tags = tags;
             }
 
             tags.clear();
             lines = extract_examples_description(ds, lines);
-            lines = extract_table(6, ds, remove_next_blanks(lines));
+            lines = extract_table(ds, remove_next_blanks(lines));
             it = lines.begin();
 
             if (!last_scenario.datasets.empty()) {
@@ -215,10 +248,10 @@ parser::extract_scenarios(
             }
 
             last_scenario.datasets.emplace_back(std::move(ds));
-        } else if (auto m = is_scenario_line(line.content())) {
+        } else if (matches(line.content, scenario_line, type, name)) {
             finish_scenario(f, line);
 
-            if (scenarios++ && )
+            //if (scenarios++ && )
         }
     }
 
@@ -235,12 +268,39 @@ parser::extract_steps(
 ) const
 {}
 
-/*void
+model::lines
 parser::extract_examples_description(
-    model::examples& es,
-    model::lines& lines
+    model::dataset& d,
+    const model::lines& from
 ) const
-{}*/
+{
+    auto lines = from;
+    auto it = lines.begin();
+
+    while (it != lines.end()) {
+        const auto& line = *it++;
+
+        if (line.is_comment()) {
+            continue;
+        }
+
+        if (
+            matches(line.content, table_line)
+            || matches(line.content, examples_line)
+            || matches(line.content, tags_line)
+            || matches(line.content, scenario_line)
+        ) {
+            --it;
+            break;
+        }
+
+        d.description.push_back(line);
+    }
+
+    lines.erase(lines.begin(), it);
+
+    return lines;
+}
 
 void
 parser::extract_scenario_description(
@@ -258,38 +318,30 @@ parser::extract_multiline_string(
 ) const
 {}
 
-void
+model::lines
 parser::extract_table(
-    model::feature& f,
-    model::scenario& s,
-    model::step& st,
-    model::lines& lines
+    model::dataset& d,
+    const model::lines& from
 ) const
-{}
-
-bool
-parser::matches(const std::string& line, const std::string& key) const
-{ return std::regex_match(line, matchers_.at(key)); }
-
-void
-parser::make_matchers()
 {
-    matchers_["step_line_first"] =
-        "^(" + join("|", "given", "and", "when", "then", "but") + ")"
-        + "(.+)"
-        ;
-    matchers_["step_line_cont"] =
-        "^(" + join("|", "given", "when", "then") + ")"
-        + "(.+)"
-        ;
-    matchers_["feature_line"] = "^(feature): (.+)";
-    matchers_["scenario_line"] =
-        "^(" + join("|", "background", "scenario", "scenarioOutline") + ")"
-        + ": ?(.+)?"
-        ;
-    matchers_["example_line"] = "^(examples): ?(.+)?$";
-    matchers_["table_line"] = "^\\s*\\|";
-    matchers_["tags_line"] = "@(^\\s]+)";
+    auto lines = from;
+    auto it = lines.begin();
+
+    while (it != lines.end()) {
+        const auto& line = *it++;
+
+        if (line.is_comment()) {
+            continue;
+        }
+
+        if (!line.content.starts_with('|')) {
+            --it;
+        }
+    }
+
+    lines.erase(lines.begin(), it);
+
+    return lines;
 }
 
 }

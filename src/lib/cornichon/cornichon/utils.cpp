@@ -892,25 +892,6 @@ glob(const std::string& expr)
     return matches;
 }
 
-match_result
-extract_matches(const std::string& expr, const std::string& re)
-{
-    match_result r;
-    std::smatch m;
-    std::regex tre(re);
-
-    auto b = std::sregex_iterator(expr.begin(), expr.end(), tre);
-    auto e = std::sregex_iterator();
-
-    r.match = (b != e);
-
-    for (auto i = b; i != e; ++i) {
-        r.matches.push_back(i->str());
-    }
-
-    return r;
-}
-
 bool
 extract_delimited(
     std::string& from,
