@@ -1,0 +1,45 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "include": [],
+  "configurePresets": [
+    {
+      "name": "debug",
+      "displayName": "Weez-U Debug",
+      "description": "Weez-U Debug",
+      "toolchainFile": "${sourceDir}/.weezdev/cmake/wd-debug.cmake",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Weez-U Release",
+      "description": "Weez-U Release",
+      "toolchainFile": "${sourceDir}/.weezdev/cmake/wd-release.cmake",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+    }
+  ]
+}
