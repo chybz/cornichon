@@ -103,6 +103,9 @@ split(
 
 string_views split_lines(const std::string_view& text);
 
+std::string_view
+strip(std::string_view sv);
+
 std::string
 subst(const std::string& s, const std::string& re, const std::string& what);
 

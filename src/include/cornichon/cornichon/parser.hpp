@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cornichon/types.hpp>
+#include <cornichon/i18n.hpp>
 #include <cornichon/model/table.hpp>
 
 namespace cornichon {
@@ -13,6 +14,7 @@ enum class parser_variant
 enum class parser_state
 {
     init,
+    multiline_text
 };
 
 struct parser_data
@@ -45,6 +47,8 @@ public:
     virtual ~parser();
 
     void reset();
+
+    void parse(const std::string& filename);
 
 private:
     std::string lang_;
