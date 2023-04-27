@@ -1,10 +1,10 @@
 #pragma once
 
-#include <string>
+#include <cornichon/types.hpp>
 
 namespace cornichon::model {
 
-struct basic_statement
+struct tag_statement : basic_statement
 {
     std::string filename;
     std::size_t line = 0;
